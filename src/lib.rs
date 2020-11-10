@@ -1,4 +1,6 @@
 #![deny(rust_2018_idioms, clippy::all, clippy::pedantic)]
+#![no_std]
+
 //! A crate for avoiding code duplication for immutable and mutable types.
 //! Check out the [`impl_twice`] macro for more information.
 //!
