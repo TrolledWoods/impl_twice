@@ -104,6 +104,10 @@
 //! struct GenericType<'a, T>(&'a T);
 //! struct GenericTypeMut<'a, T>(&'a mut T);
 //!
+//! trait SomeTrait<T> {
+//!     fn get(&self) -> &'_ T;
+//! }
+//!
 //! impl_twice!(
 //!     // Generics work as well.
 //!     impl<T> GenericType<'_, T>, GenericTypeMut<'_, T> {
@@ -121,8 +125,34 @@
 //!             write!(f, "{:?}", self.0)
 //!         }
 //!     }
+//!
+//!     // You may want different generics or generic bounds on the two different types.
+//!     // For that reason you can have two sets of generic parameters.
+//!     // This is a bad example because there is actually no reason to do this in this
+//!     // case, but it's here if you want it.
+//!     impl<T> GenericType<'_, T> where (T: ToString)
+//!     impl<T> GenericTypeMut<'_, T> where (T: ToString + Clone) {
+//!         fn stuff(&self) -> String {
+//!             self.0.to_string()
+//!         }
+//!     }
+//!
+//!     // The above also works with traits. (this is also a bad example).
+//!     impl<T> SomeTrait<T> for GenericType<'_, T>
+//!     impl<T> SomeTrait<T> for GenericTypeMut<'_, T> where (T: Iterator) {
+//!         fn get(&self) -> &'_ T {
+//!             &self.0
+//!         }
+//!     }
 //! );
 //! ```
+//!
+//! # Limitations
+//! The generics in these macros may look the same as generics on real impl blocks,
+//! but they are much more limited. That is simply because there seems to be no good
+//! way to do generics like this in macros yet. So for now, the generics you can do
+//! are quite limited.
+//!
 
 /// A macro for avoiding code duplication for immutable and mutable types.
 /// Check out the crate level documentation for more information
@@ -146,6 +176,23 @@ macro_rules! impl_twice {
     };
 
     (impl $(<$($gen_args:tt),*>)?
+        $name1:ident$(<$($name1_param:tt),*>)?
+        $(where ($($where_args:tt)*))?
+     impl $(<$($gen_args2:tt),*>)?
+        $name2:ident$(<$($name2_param:tt),*>)?
+        $(where ($($where_args2:tt)*))? {
+            $($content:item)*
+    }$($extra:tt)*) => {
+        impl$(<$($gen_args),*>)? $name1 $(<$($name1_param),*>)? $(where $($where_args)*)? {
+            $($content)*
+        }
+        impl$(<$($gen_args2),*>)? $name2 $(<$($name2_param),*>)? $(where $($where_args2)*)? {
+            $($content)*
+        }
+        impl_twice!($($extra)*);
+    };
+
+    (impl $(<$($gen_args:tt),*>)?
         $trait:ident$(<$($trait_param:tt),*>)? for
         $name1:ident$(<$($name1_param:tt),*>)?,
         $name2:ident$(<$($name2_param:tt),*>)?
@@ -156,6 +203,25 @@ macro_rules! impl_twice {
             $($content)*
         }
         impl$(<$($gen_args),*>)? $trait $(<$($trait_param),*>)? for $name2 $(<$($name2_param),*>)? $(where $($where_args)*)? {
+            $($content)*
+        }
+        impl_twice!($($extra)*);
+    };
+
+    (impl $(<$($gen_args:tt),*>)?
+        $trait:ident$(<$($trait_param:tt),*>)? for
+        $name1:ident$(<$($name1_param:tt),*>)?
+        $(where ($($where_args:tt)*))?
+     impl $(<$($gen_args2:tt),*>)?
+        $trait2:ident$(<$($trait_param2:tt),*>)? for
+        $name2:ident$(<$($name2_param:tt),*>)?
+        $(where ($($where_args2:tt)*))? {
+            $($content:item)*
+    }$($extra:tt)*) => {
+        impl$(<$($gen_args),*>)? $trait $(<$($trait_param),*>)? for $name1 $(<$($name1_param),*>)? $(where $($where_args)*)? {
+            $($content)*
+        }
+        impl$(<$($gen_args2),*>)? $trait2 $(<$($trait_param2),*>)? for $name2 $(<$($name2_param),*>)? $(where $($where_args2)*)? {
             $($content)*
         }
         impl_twice!($($extra)*);
