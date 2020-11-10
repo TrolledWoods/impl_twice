@@ -2,7 +2,6 @@
 #![no_std]
 
 //! A crate for avoiding code duplication for immutable and mutable types.
-//! Check out the [`impl_twice`] macro for more information.
 //!
 //! # Reason for existance
 //! When writing rust programs, times come when you need two types,
@@ -82,68 +81,21 @@
 //! There are quite a few different ways to use the macro based on what you want.
 //! ```
 //! # use impl_twice::impl_twice;
-//! # use std::fmt::Debug;
-//! struct Type;
-//! struct TypeMut;
 //!
-//! impl_twice!(
-//!     // The types are separated by commas. There can only be exactly two
-//!     // types.
-//!     impl Type, TypeMut {
-//!         fn hello(&self) {
-//!             println!("Hello, World!");
-//!         }
-//!     }
-//!
-//!     // Traits work as well
-//!     impl Default for Type, TypeMut {
-//!         fn default() -> Self {
-//!             Self
-//!         }
-//!     }
-//! );
-//!
-//! struct GenericType<'a, T>(&'a T);
-//! struct GenericTypeMut<'a, T>(&'a mut T);
+//! # #[allow(unused)]
+//! struct Owned<T>(T);
+//! # #[allow(unused)]
+//! struct Borrowed<'a, T>(&'a T);
+//! # #[allow(unused)]
+//! struct BorrowedMut<'a, T>(&'a mut T);
 //!
 //! trait SomeTrait<T> {
 //!     fn get(&self) -> &'_ T;
 //! }
 //!
 //! impl_twice!(
-//!     // Generics work as well.
-//!     // However, where clauses need parenthesees around them
-//!     impl<T> GenericType<'_, T>, GenericTypeMut<'_, T> where (T: Clone) {
-//!         pub fn get(&self) -> &'_ T {
-//!             self.0
-//!         }
-//!     }
-//!
-//!     // Implementing traits with generics works as well.
-//!     // You specify the trait for each type that wants one.
-//!     impl<T> Debug for GenericType<'_, T>,
-//!             Debug for GenericTypeMut<'_, T>
-//!         where (T: Debug)
-//!     {
-//!         fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-//!             write!(f, "{:?}", self.0)
-//!         }
-//!     }
-//!
-//!     // You may want different generics or generic bounds on the two different types.
-//!     // For that reason you can have two sets of generic parameters.
-//!     // This is a bad example because there is actually no reason to do this in this
-//!     // case, but it's here if you want it.
-//!     impl<T> GenericType<'_, T> where (T: ToString)
-//!     impl<T> GenericTypeMut<'_, T> where (T: ToString + Clone) {
-//!         fn stuff(&self) -> String {
-//!             self.0.to_string()
-//!         }
-//!     }
-//!
-//!     // // The above also works with traits. (this is also a bad example).
-//!     impl<T> SomeTrait<T> for GenericType<'_, T>
-//!     impl<T> SomeTrait<T> for GenericTypeMut<'_, T> where (T: Iterator) {
+//!     // Normal impl blocks work just fine
+//!     impl<T> Owned<T> {
 //!         fn get(&self) -> &'_ T {
 //!             &self.0
 //!         }
@@ -151,11 +103,104 @@
 //! );
 //! ```
 //!
+//! If you want to implement the same items on several types,
+//! just separate the types with commas;
+//!
+//! ```
+//! # use impl_twice::impl_twice;
+//! # #[allow(unused)]
+//! # struct Owned<T>(T);
+//! # #[allow(unused)]
+//! # struct Borrowed<'a, T>(&'a T);
+//! # #[allow(unused)]
+//! # struct BorrowedMut<'a, T>(&'a mut T);
+//! impl_twice!(
+//!     impl<T>
+//!         Borrowed<'_, T>,
+//!         BorrowedMut<'_, T>
+//!     {
+//!         fn get(&self) -> &'_ T {
+//!             self.0
+//!         }
+//!     }
+//! );
+//! ```
+//! Adding type bounds is done with 'where'.
+//! Here this library differs from normal impls in that you have
+//! to add parenthesees after the where.
+//! ```
+//! # use impl_twice::impl_twice;
+//! # #[allow(unused)]
+//! # struct Owned<T>(T);
+//! # #[allow(unused)]
+//! # struct Borrowed<'a, T>(&'a T);
+//! # #[allow(unused)]
+//! # struct BorrowedMut<'a, T>(&'a mut T);
+//! impl_twice!(
+//!     impl<T>
+//!         Borrowed<'_, T>,
+//!         BorrowedMut<'_, T>
+//!     where (T: Clone) {
+//!         fn to_owned(&self) -> Owned<T> {
+//!             Owned(self.0.clone())
+//!         }
+//!     }
+//! );
+//! ```
+//! Traits work as well.
+//! ```
+//! # use impl_twice::impl_twice;
+//! # #[allow(unused)]
+//! # struct Owned<T>(T);
+//! # #[allow(unused)]
+//! # struct Borrowed<'a, T>(&'a T);
+//! # #[allow(unused)]
+//! # struct BorrowedMut<'a, T>(&'a mut T);
+//! use std::fmt::{Debug, Formatter, Result};
+//! impl_twice!(
+//!     impl<T>
+//!         Debug for Borrowed<'_, T>,
+//!         Debug for BorrowedMut<'_, T>,
+//!         Debug for Owned<T>
+//!     where (T: Debug) {
+//!         fn fmt(&self, f: &mut Formatter<'_>) -> Result {
+//!             write!(f, "[{:?}]", self.0)
+//!         }
+//!     }
+//! );
+//! ```
+//!
+//! Sometimes you may want different generics
+//! for each type, maybe because they have a different number
+//! of generic parameters.
+//!
+//! In that case, you can simply add another `impl`, and the
+//! types specified after that impl will use its generics.
+//!
+//! You have a separate `where` block for each `impl`.
+//!
+//! ```
+//! # use impl_twice::impl_twice;
+//! #[derive(Clone)]
+//! struct Complex<A, B>(A, B);
+//! #[derive(Clone)]
+//! struct Simple<T>(T);
+//!
+//! impl_twice!(
+//!     impl<A, B> Complex<A, B> where (A: Clone, B: Clone)
+//!     impl<T> Simple<T> where (T: Clone) {
+//!         fn redundant_clone_method_for_example_purposes(&self) -> Self {
+//!             self.clone()
+//!         }
+//!     }
+//! );
+//! ```
+//!
 //! # Limitations
-//! The generics in these macros may look the same as generics on real impl blocks,
-//! but they are much more limited. That is simply because there seems to be no good
-//! way to do generics like this in macros yet. So for now, the generics you can do
-//! are quite limited.
+//! * Trait, type names and generic parameters are simply tokens. That means, you cannot specify a
+//! path with ``::``, so you have to ``use`` the items first before implementing them. This also
+//! means that the generic parameters cannot depend on other generic parameters. This
+//! might get implemented eventually however.
 //!
 
 /// A macro for avoiding code duplication for immutable and mutable types.
@@ -164,6 +209,9 @@
 macro_rules! impl_twice {
     () => {};
     (impl $(<$($gen_args:tt),*>)? $(where ($($where_args:tt)*))? { $($content:item)* }$($extra:tt)*) => {
+        impl_twice!($($extra)*);
+    };
+    ({ $($content:item)* }$($extra:tt)*) => {
         impl_twice!($($extra)*);
     };
     (
@@ -220,5 +268,4 @@ macro_rules! impl_twice {
         );
         impl_twice!($($extra)*);
     };
-    ({$($x:item)*}) => {};
 }

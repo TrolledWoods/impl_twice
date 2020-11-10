@@ -51,7 +51,6 @@ This is equivalent to the above example but implemented with this
 crate;
 
 ```rust
-# use impl_twice::impl_twice;
 struct WrappedSlice<'a, T>(&'a [T]);
 struct WrappedSliceMut<'a, T>(&'a mut [T]);
 
