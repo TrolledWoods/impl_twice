@@ -1,8 +1,14 @@
 [package]
 name = "impl_twice"
-version = "0.1.0"
-authors = ["johnm <trolledwoods@gmail.com>"]
+description = "Implement items on two types with only one impl block"
+readme = "README.md"
+license = "MIT"
+version = "0.0.1"
+authors = ["TrolledWoods <trolledwoods@gmail.com>"]
 edition = "2018"
+repository = "https://github.com/TrolledWoods/impl_twice"
+keywords = ["no_std", "utility", "tool", "macros", "macro"]
+categories = ["no-std"]
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
