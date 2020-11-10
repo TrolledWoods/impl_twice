@@ -16,7 +16,7 @@ When making two very similar types that are just immutable/mutable
 counterparts to each other, you may have to implement the same
 things on both of the types. Here is an example of the duplication;
 
-```
+```rust
 struct WrappedSlice<'a, T>(&'a [T]);
 struct WrappedSliceMut<'a, T>(&'a mut [T]);
 
@@ -50,7 +50,7 @@ types. That's what this crate is designed for!
 This is equivalent to the above example but implemented with this
 crate;
 
-```
+```rust
 # use impl_twice::impl_twice;
 struct WrappedSlice<'a, T>(&'a [T]);
 struct WrappedSliceMut<'a, T>(&'a mut [T]);
