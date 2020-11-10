@@ -112,17 +112,19 @@
 //!
 //! impl_twice!(
 //!     // Generics work as well.
-//!     impl<T> GenericType<'_, T>, GenericTypeMut<'_, T> {
+//!     // However, where clauses need parenthesees around them
+//!     impl<T> GenericType<'_, T>, GenericTypeMut<'_, T> where (T: Clone) {
 //!         pub fn get(&self) -> &'_ T {
 //!             self.0
 //!         }
 //!     }
 //!
 //!     // Implementing traits with generics works as well.
-//!     // However, the things after where clauses have to have
-//!     // parenthesees around them. Bounds on the generic parameters
-//!     // only work with a where clause, so ``impl<T: ToOwned>`` wouldn't work.
-//!     impl<T> Debug for GenericType<'_, T>, GenericTypeMut<'_, T> where (T: Debug) {
+//!     // You specify the trait for each type that wants one.
+//!     impl<T> Debug for GenericType<'_, T>,
+//!             Debug for GenericTypeMut<'_, T>
+//!         where (T: Debug)
+//!     {
 //!         fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
 //!             write!(f, "{:?}", self.0)
 //!         }
@@ -139,7 +141,7 @@
 //!         }
 //!     }
 //!
-//!     // The above also works with traits. (this is also a bad example).
+//!     // // The above also works with traits. (this is also a bad example).
 //!     impl<T> SomeTrait<T> for GenericType<'_, T>
 //!     impl<T> SomeTrait<T> for GenericTypeMut<'_, T> where (T: Iterator) {
 //!         fn get(&self) -> &'_ T {
@@ -161,181 +163,62 @@
 #[macro_export]
 macro_rules! impl_twice {
     () => {};
-
-    (impl $(<$($gen_args:tt),*>)?
-        $name1:ident$(<$($name1_param:tt),*>)?
-        $(where ($($where_args:tt)*))? {
-            $($content:item)*
-    }$($extra:tt)*) => {
-        impl$(<$($gen_args),*>)? $name1 $(<$($name1_param),*>)? $(where $($where_args)*)? {
-            $($content)*
-        }
+    (impl $(<$($gen_args:tt),*>)? $(where ($($where_args:tt)*))? { $($content:item)* }$($extra:tt)*) => {
         impl_twice!($($extra)*);
     };
-    (impl $(<$($gen_args:tt),*>)?
-        $trait:ident$(<$($trait_param:tt),*>)? for
-        $name1:ident$(<$($name1_param:tt),*>)?
-        $(where ($($where_args:tt)*))? {
-            $($content:item)*
-    }$($extra:tt)*) => {
-        impl$(<$($gen_args),*>)? $trait $(<$($trait_param),*>)? for $name1 $(<$($name1_param),*>)? $(where $($where_args)*)? {
-            $($content)*
-        }
-        impl_twice!($($extra)*);
-    };
-
-    (impl $(<$($gen_args:tt),*>)?
-        $name1:ident$(<$($name1_param:tt),*>)?,
-        $name2:ident$(<$($name2_param:tt),*>)?
-        $(where ($($where_args:tt)*))? {
-            $($content:item)*
-    }$($extra:tt)*) => {
-        impl$(<$($gen_args),*>)? $name1 $(<$($name1_param),*>)? $(where $($where_args)*)? {
-            $($content)*
-        }
-        impl$(<$($gen_args),*>)? $name2 $(<$($name2_param),*>)? $(where $($where_args)*)? {
-            $($content)*
-        }
-        impl_twice!($($extra)*);
-    };
-
-    (impl $(<$($gen_args:tt),*>)?
-        $name1:ident$(<$($name1_param:tt),*>)?
+    (
+        impl $(<$($gen_args:tt),*>)?
+            $name:ident$(<$($name_param:tt),*>)?
+            $(for $ename:ident$(<$($ename_param:tt),*>)?)?
+            $(,
+                $more_name:ident$(<$($more_name_param:tt),*>)?
+                $(for $more_ename:ident$(<$($more_ename_param:tt),*>)?)?
+            )*
         $(where ($($where_args:tt)*))?
-     impl $(<$($gen_args2:tt),*>)?
-        $name2:ident$(<$($name2_param:tt),*>)?
-        $(where ($($where_args2:tt)*))? {
+        $(
+            impl $(<$($gen_args2:tt),*>)?
+                $name2:ident$(<$($name_param2:tt),*>)?
+                $(for $ename2:ident$(<$($ename_param2:tt),*>)?)?
+                $(,
+                    $more_name2:ident$(<$($more_name_param2:tt),*>)?
+                    $(for $more_ename2:ident$(<$($more_ename_param2:tt),*>)?)?
+                )*
+            $(where ($($where_args2:tt)*))?
+        )*
+        {
             $($content:item)*
-    }$($extra:tt)*) => {
-        impl$(<$($gen_args),*>)? $name1 $(<$($name1_param),*>)? $(where $($where_args)*)? {
+        }
+        $($extra:tt)*
+    ) => {
+        impl$(<$($gen_args),*>)? $name $(<$($name_param),*>)? $(for $ename$(<$($ename_param),*>)?)? $(where $($where_args)*)? {
             $($content)*
         }
-        impl$(<$($gen_args2),*>)? $name2 $(<$($name2_param),*>)? $(where $($where_args2)*)? {
-            $($content)*
-        }
+        impl_twice!(
+            impl $(<$($gen_args),*>)? $(
+                $more_name$(<$($more_name_param),*>)?
+                $(for $more_ename$(<$($more_ename_param),*>)?)?
+            ),*
+            $(where ($($where_args)*))?
+            {
+                $($content)*
+            }
+        );
+        impl_twice!(
+            $(
+                impl $(<$($gen_args2),*>)?
+                    $name2$(<$($name_param2),*>)?
+                    $(for $ename2$(<$($ename_param2),*>)?)?
+                    $(,
+                        $more_name2$(<$($more_name_param2),*>)?
+                        $(for $more_ename2$(<$($more_ename_param2),*>)?)?
+                    )*
+                $(where ($($where_args2)*))?
+            )*
+            {
+                $($content)*
+            }
+        );
         impl_twice!($($extra)*);
     };
-
-    (impl $(<$($gen_args:tt),*>)?
-        $trait:ident$(<$($trait_param:tt),*>)? for
-        $name1:ident$(<$($name1_param:tt),*>)?,
-        $name2:ident$(<$($name2_param:tt),*>)?
-        $(where ($($where_args:tt)*))? {
-            $($content:item)*
-    }$($extra:tt)*) => {
-        impl$(<$($gen_args),*>)? $trait $(<$($trait_param),*>)? for $name1 $(<$($name1_param),*>)? $(where $($where_args)*)? {
-            $($content)*
-        }
-        impl$(<$($gen_args),*>)? $trait $(<$($trait_param),*>)? for $name2 $(<$($name2_param),*>)? $(where $($where_args)*)? {
-            $($content)*
-        }
-        impl_twice!($($extra)*);
-    };
-
-    (impl $(<$($gen_args:tt),*>)?
-        $trait:ident$(<$($trait_param:tt),*>)? for
-        $name1:ident$(<$($name1_param:tt),*>)?
-        $(where ($($where_args:tt)*))?
-     impl $(<$($gen_args2:tt),*>)?
-        $trait2:ident$(<$($trait_param2:tt),*>)? for
-        $name2:ident$(<$($name2_param:tt),*>)?
-        $(where ($($where_args2:tt)*))? {
-            $($content:item)*
-    }$($extra:tt)*) => {
-        impl$(<$($gen_args),*>)? $trait $(<$($trait_param),*>)? for $name1 $(<$($name1_param),*>)? $(where $($where_args)*)? {
-            $($content)*
-        }
-        impl$(<$($gen_args2),*>)? $trait2 $(<$($trait_param2),*>)? for $name2 $(<$($name2_param),*>)? $(where $($where_args2)*)? {
-            $($content)*
-        }
-        impl_twice!($($extra)*);
-    };
-
-    (impl $(<$($gen_args:tt),*>)?
-        $name1:ident$(<$($name1_param:tt),*>)?,
-        $name2:ident$(<$($name2_param:tt),*>)?,
-        $name3:ident$(<$($name3_param:tt),*>)?
-        $(where ($($where_args:tt)*))? {
-            $($content:item)*
-    }$($extra:tt)*) => {
-        impl$(<$($gen_args),*>)? $name1 $(<$($name1_param),*>)? $(where $($where_args)*)? {
-            $($content)*
-        }
-        impl$(<$($gen_args),*>)? $name2 $(<$($name2_param),*>)? $(where $($where_args)*)? {
-            $($content)*
-        }
-        impl$(<$($gen_args),*>)? $name3 $(<$($name3_param),*>)? $(where $($where_args)*)? {
-            $($content)*
-        }
-        impl_twice!($($extra)*);
-    };
-
-    (impl $(<$($gen_args:tt),*>)?
-        $name1:ident$(<$($name1_param:tt),*>)?
-        $(where ($($where_args:tt)*))?
-     impl $(<$($gen_args2:tt),*>)?
-        $name2:ident$(<$($name2_param:tt),*>)?
-        $(where ($($where_args2:tt)*))?
-     impl $(<$($gen_args3:tt),*>)?
-        $name3:ident$(<$($name3_param:tt),*>)?
-        $(where ($($where_args3:tt)*))? {
-            $($content:item)*
-    }$($extra:tt)*) => {
-        impl$(<$($gen_args),*>)? $name1 $(<$($name1_param),*>)? $(where $($where_args)*)? {
-            $($content)*
-        }
-        impl$(<$($gen_args2),*>)? $name2 $(<$($name2_param),*>)? $(where $($where_args2)*)? {
-            $($content)*
-        }
-        impl$(<$($gen_args3),*>)? $name3 $(<$($name3_param),*>)? $(where $($where_args3)*)? {
-            $($content)*
-        }
-        impl_twice!($($extra)*);
-    };
-
-    (impl $(<$($gen_args:tt),*>)?
-        $trait:ident$(<$($trait_param:tt),*>)? for
-        $name1:ident$(<$($name1_param:tt),*>)?,
-        $name2:ident$(<$($name2_param:tt),*>)?,
-        $name3:ident$(<$($name3_param:tt),*>)?
-        $(where ($($where_args:tt)*))? {
-            $($content:item)*
-    }$($extra:tt)*) => {
-        impl$(<$($gen_args),*>)? $trait $(<$($trait_param),*>)? for $name1 $(<$($name1_param),*>)? $(where $($where_args)*)? {
-            $($content)*
-        }
-        impl$(<$($gen_args),*>)? $trait $(<$($trait_param),*>)? for $name2 $(<$($name2_param),*>)? $(where $($where_args)*)? {
-            $($content)*
-        }
-        impl$(<$($gen_args),*>)? $trait $(<$($trait_param),*>)? for $name3 $(<$($name3_param),*>)? $(where $($where_args)*)? {
-            $($content)*
-        }
-        impl_twice!($($extra)*);
-    };
-
-    (impl $(<$($gen_args:tt),*>)?
-        $trait:ident$(<$($trait_param:tt),*>)? for
-        $name1:ident$(<$($name1_param:tt),*>)?
-        $(where ($($where_args:tt)*))?
-     impl $(<$($gen_args2:tt),*>)?
-        $trait2:ident$(<$($trait_param2:tt),*>)? for
-        $name2:ident$(<$($name2_param:tt),*>)?
-        $(where ($($where_args2:tt)*))?
-     impl $(<$($gen_args3:tt),*>)?
-        $trait3:ident$(<$($trait_param3:tt),*>)? for
-        $name3:ident$(<$($name3_param:tt),*>)?
-        $(where ($($where_args3:tt)*))? {
-            $($content:item)*
-    }$($extra:tt)*) => {
-        impl$(<$($gen_args),*>)? $trait $(<$($trait_param),*>)? for $name1 $(<$($name1_param),*>)? $(where $($where_args)*)? {
-            $($content)*
-        }
-        impl$(<$($gen_args2),*>)? $trait2 $(<$($trait_param2),*>)? for $name2 $(<$($name2_param),*>)? $(where $($where_args2)*)? {
-            $($content)*
-        }
-        impl$(<$($gen_args3),*>)? $trait3 $(<$($trait_param3),*>)? for $name3 $(<$($name3_param),*>)? $(where $($where_args3)*)? {
-            $($content)*
-        }
-        impl_twice!($($extra)*);
-    };
+    ({$($x:item)*}) => {};
 }
